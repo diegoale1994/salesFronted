@@ -1,12 +1,27 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Layout } from '../components/Layout';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
+import { useMutation, gql } from '@apollo/client';
+import { useRouter } from 'next/router';
+
+const NUEVA_CUENTA = gql`
+    mutation nuevoUsuario($input: UsuarioInput) {
+        nuevoUsuario(input: $input) {
+        id
+        nombre
+        apellido
+        email
+        }
+    }`;
 
 const nuevacuenta = () => {
 
+    const [nuevoUsuario] = useMutation(NUEVA_CUENTA);
 
-    //validacion de formulario
+    const [mensaje, setMensaje] = useState(null);
+
+    const router = useRouter();
 
     const formik = useFormik({
         initialValues: {
@@ -21,15 +36,38 @@ const nuevacuenta = () => {
             email: Yup.string().email('El correo es obligatorio!').required('El email es obligatorio!'),
             password: Yup.string().required('El password es obligatorio!').min(6, 'El password debe ser de minimo 6 caracteres')
         }),
-        onSubmit: valores => {
-            console.log('enviando');
-            console.log(valores)
+        onSubmit: async (valores) => {
+            try {
+                const { data } = await nuevoUsuario({
+                    variables: {
+                        input: valores
+                    }
+                });
+                setMensaje(`Se creo correctamente el Usuario: ${data.nuevoUsuario.nombre}`);
+                setTimeout(() => {
+                    setMensaje(null);
+                    router.push('/login');
+                }, 3000);
+            } catch (error) {
+                setMensaje(error.message);
+                setTimeout(() => setMensaje(null), 3000);
+                console.log(error);
+            }
         }
     });
+
+    const mostrarMensaje = () => {
+        return (
+            <div className="bg-white py-2 px-3 w-full my-3 max-w-sm text-center mx-auto">
+                <p>{mensaje}</p>
+            </div>
+        )
+    }
 
     return (
         <>
             <Layout>
+                {mensaje && mostrarMensaje()}
                 <h1 className="text-center text-2xl text-white font-light">Crear nueva cuenta</h1>
                 <div className="flex justify-center mt-5">
                     <div className="w-full max-w-sm">
